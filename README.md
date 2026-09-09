@@ -392,8 +392,8 @@ StoryCraftAI/
 
 ## 📞 Контакты
 
-**Автор проекта:** [Ваше Имя]  
-**Email:** [ваш.email@example.com]  
+**Автор проекта:** [w4lp3sh]  
+**Email:** [walpesh1@gmail.com]  
 **GitHub:** [@Walpesh](https://github.com/Walpesh)
 
 ---
