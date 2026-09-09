@@ -1,0 +1,853 @@
+<!-- templates/admin.html -->
+{% extends "base.html" %}
+{% block title %}Администратор - StoryCraftAI{% endblock %}
+{% block content %}
+
+<main class="flex-grow py-10 px-4 max-w-7xl mx-auto w-full">
+
+  <h1 class="text-3xl font-bold mb-6">🛠️ Панель администратора</h1>
+
+  <!-- Статистика -->
+  <section class="mb-10">
+    <h2 class="text-xl font-semibold mb-4">📊 Общая статистика</h2>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div class="bg-white shadow rounded-lg p-6">
+        <p class="text-gray-600">Пользователи</p>
+        <p class="text-2xl font-bold text-indigo-600">{{ total_users }}</p>
+      </div>
+      <div class="bg-white shadow rounded-lg p-6">
+        <p class="text-gray-600">Книги</p>
+        <p class="text-2xl font-bold text-indigo-600">{{ total_books }}</p>
+      </div>
+      <div class="bg-white shadow rounded-lg p-6">
+        <p class="text-gray-600">Логи за день</p>
+        <p class="text-2xl font-bold text-indigo-600">{{ logs_today }}</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Пользователи -->
+  <section class="mb-10">
+    <h2 class="text-xl font-semibold mb-4">👥 Пользователи сайта</h2>
+    <div class="flex gap-2 mb-4">
+      <input type="text" id="search-users" placeholder="Поиск по имени или email..." class="w-full border border-gray-300 rounded-md px-4 py-2" />
+      <button onclick="searchGlobal()" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition duration-200">Поиск глобально</button>
+    </div>
+    <div class="overflow-x-auto">
+      <table id="users-table" class="min-w-full bg-white rounded-lg shadow overflow-hidden">
+        <thead class="bg-indigo-100">
+          <tr>
+            <th class="px-4 py-2">ID</th>
+            <th class="px-4 py-2">Имя</th>
+            <th class="px-4 py-2">Email</th>
+            <th class="px-4 py-2">Дата регистрации</th>
+            <th class="px-4 py-2">Роль</th>
+            <th class="px-4 py-2">Действия</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200">
+          {% for user in users %}
+          <tr data-id="{{ user.id }}" class="hover:bg-gray-50 role-{{ user.account_type }}">
+            <td class="px-4 py-2">{{ user.id }}</td>
+            <td class="px-4 py-2 font-medium">{{ user.username }}</td>
+            <td class="px-4 py-2">{{ user.email }}</td>
+            <td class="px-4 py-2 text-sm text-gray-500">{{ user.created_at.strftime("%d.%m.%Y") }}</td>
+            <td class="px-4 py-2">
+              {% if user.account_type == "admin" %}
+                <span class="inline-block bg-red-100 text-red-700 px-2 py-1 rounded">Admin</span>
+              {% elif user.account_type == "banned" %}
+                <span class="inline-block bg-gray-100 text-gray-700 px-2 py-1 rounded">Забанен</span>
+              {% else %}
+                <span class="inline-block bg-green-100 text-green-700 px-2 py-1 rounded">Пользователь</span>
+              {% endif %}
+            </td>
+            <td class="px-4 py-2 space-x-2">
+              <button
+                  class="text-indigo-600 hover:text-indigo-800"
+                  data-id="{{ user.id }}"
+                  data-username="{{ user.username|escape }}"
+                  data-email="{{ user.email|escape }}"
+                  data-type="{{ user.account_type|escape }}"
+                  onclick="openUserPopup(this.dataset.id, this.dataset.username, this.dataset.email, this.dataset.type)">
+                  Управлять
+              </button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="mb-10">
+  <h2 class="text-xl font-semibold mb-4">📚 Книги</h2>
+
+  <!-- Форма поиска и загрузки -->
+  <div class="flex flex-wrap gap-4 mb-4">
+    <input type="text" id="book-search" placeholder="Поиск по названию..." class="w-full sm:w-auto border border-gray-300 rounded-md px-4 py-2" />
+    <button onclick="loadAllBooks()" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition duration-200">
+      Загрузить все книги
+    </button>
+  </div>
+
+  <!-- Таблица книг -->
+  <div class="overflow-x-auto">
+    <table id="books-table" class="min-w-full bg-white rounded-lg shadow overflow-hidden">
+      <thead class="bg-indigo-100">
+        <tr>
+          <th class="px-4 py-2">ID</th>
+          <th class="px-4 py-2">Название</th>
+          <th class="px-4 py-2">Автор</th>
+          <th class="px-4 py-2">Жанр</th>
+          <th class="px-4 py-2">Дата создания</th>
+          <th class="px-4 py-2">Действия</th>
+        </tr>
+      </thead>
+      <tbody id="books-body" class="divide-y divide-gray-200">
+        {% for book in books[:10] %}
+          <tr data-id="{{ book.id }}" class="book-entry genre-{{ book.genre or 'unknown' }} author-{{ book.author_name }}">
+            <td class="px-4 py-2">{{ book.id }}</td>
+            <td class="px-4 py-2 font-medium">{{ book.title }}</td>
+            <td class="px-4 py-2">{{ book.author_name }}</td>
+            <td class="px-4 py-2">{{ book.genre or 'Не указан' }}</td>
+            <td class="px-4 py-2 text-xs text-gray-500">{{ book.created_at.strftime("%d.%m.%Y") }}</td>
+            <td class="px-4 py-2 space-x-2">
+              <a href="/book/{{ book.id }}" class="text-indigo-600 hover:text-indigo-800">Просмотреть</a>
+              <button onclick="openBookPopup('{{ book.id }}', '{{ book.title }}', '{{book.genre}}')" class="text-green-600 hover:text-green-800">Редактировать</button>
+              <button onclick="deleteBook('{{ book.id }}')" class="text-red-600 hover:text-red-800">Удалить</button>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+  <!-- Журнал действий -->
+  <section class="mb-10">
+  <h2 class="text-xl font-semibold mb-4">📋 Журнал действий</h2>
+
+  <!-- Форма фильтров -->
+<div class="flex flex-wrap gap-4 mb-4">
+  <!-- Группа дат -->
+  <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+    <label for="log-filter-from" class="text-sm font-medium text-gray-700">Дата с:</label>
+    <input type="date" id="log-filter-from" class="border border-gray-300 rounded-md px-4 py-2" />
+  </div>
+
+  <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+    <label for="log-filter-to" class="text-sm font-medium text-gray-700">Дата по:</label>
+    <input type="date" id="log-filter-to" class="border border-gray-300 rounded-md px-4 py-2" />
+  </div>
+
+  <!-- Группа времени -->
+  <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+    <label for="log-time-from" class="text-sm font-medium text-gray-700">Время с:</label>
+    <input type="time" id="log-time-from" class="border border-gray-300 rounded-md px-4 py-2" />
+  </div>
+
+  <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+    <label for="log-time-to" class="text-sm font-medium text-gray-700">Время по:</label>
+    <input type="time" id="log-time-to" class="border border-gray-300 rounded-md px-4 py-2" />
+  </div>
+
+  <!-- Тип действия -->
+  <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+    <label for="log-filter-type" class="text-sm font-medium text-gray-700">Тип действия:</label>
+    <select id="log-filter-type" class="border border-gray-300 rounded-md px-4 py-2">
+      <option value="">Все типы</option>
+      <option value="login">Вход</option>
+      <option value="generate_book">Генерация книги</option>
+      <option value="ban">Бан</option>
+      <option value="change_data">Изменение данных</option>
+    </select>
+  </div>
+
+  <!-- Пользователь -->
+  <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+    <label for="log-filter-user" class="text-sm font-medium text-gray-700">Пользователь:</label>
+    <select id="log-filter-user" class="border border-gray-300 rounded-md px-4 py-2">
+      <option value="">Все пользователи</option>
+      {% for user in users %}
+        <option value="{{ user.id }}">{{ user.username }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <!-- Поиск -->
+  <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+    <label for="log-search" class="text-sm font-medium text-gray-700">Поиск:</label>
+    <input type="text" id="log-search" placeholder="Поиск по действию..." class="w-full sm:w-auto border border-gray-300 rounded-md px-4 py-2" />
+  </div>
+
+  <!-- Кнопка загрузки -->
+  <button id="load-logs-btn" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition duration-200">
+    Загрузить все логи
+  </button>
+  
+</div>
+
+  <!-- Таблица логов -->
+  <div class="overflow-x-auto">
+    <table id="logs-table" class="min-w-full bg-white rounded-lg shadow overflow-hidden">
+      <thead class="bg-indigo-100">
+        <tr>
+          <th class="px-4 py-2">ID</th>
+          <th class="px-4 py-2">Действие</th>
+          <th class="px-4 py-2">Тип</th>
+          <th class="px-4 py-2">IP</th>
+          <th class="px-4 py-2">Время</th>
+        </tr>
+      </thead>
+      <tbody id="logs-body" class="divide-y divide-gray-200">
+        {% for log in logs %}
+          <tr class="log-entry type-{{ log.action_type }} user-{{ log.user_id or 'anon' }}">
+            <td class="px-4 py-2">{{ log.id }}</td>
+            <td class="px-4 py-2">{{ log.action }}</td>
+            <td class="px-4 py-2">
+              <span class="inline-block bg-blue-100 text-blue-700 px-2 py-1 rounded">{{ log.action_type }}</span>
+            </td>
+            <td class="px-4 py-2 text-gray-600">{{ log.ip_address }}</td>
+            <td class="px-4 py-2 text-xs text-gray-500">{{ log.created_at.strftime("%d.%m.%Y %H:%M:%S") }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+  <!-- IP Блокировка -->
+  <section class="mb-10">
+    <h2 class="text-xl font-semibold mb-4">🚫 Заблокированные IP</h2>
+    <div class="flex flex-wrap gap-4 mb-4">
+      <input type="text" id="new-ip" placeholder="Введите IP для блокировки" class="w-full sm:w-auto border border-gray-300 rounded-md px-4 py-2" />
+      <button onclick="addBlockedIP()" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition duration-200">
+        Добавить
+      </button>
+    </div>
+    <div class="overflow-x-auto">
+      <table id="ip-table" class="min-w-full bg-white rounded-lg shadow overflow-hidden">
+        <thead class="bg-indigo-100">
+          <tr>
+            <th class="px-4 py-2">IP-адрес</th>
+            <th class="px-4 py-2">Дата блокировки</th>
+            <th class="px-4 py-2">Действия</th>
+          </tr>
+        </thead>
+        <tbody id="ip-body" class="divide-y divide-gray-200">
+          {% for ip in blocked_ips %}
+          <tr data-ip="{{ ip.ip_address }}">
+            <td class="px-4 py-2">{{ ip.ip_address }}</td>
+            <td class="px-4 py-2 text-xs text-gray-500">{{ ip.blocked_at.strftime("%d.%m.%Y %H:%M") }}</td>
+            <td class="px-4 py-2">
+              <button onclick="removeBlockedIP(this)" class="text-red-600 hover:text-red-800">Удалить</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<!-- Pop-up управления пользователем -->
+<div id="user-popup" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center">
+  <div class="bg-white w-96 rounded-lg shadow-lg p-6 relative">
+    <button onclick="closeUserPopup()" class="absolute top-2 right-2 text-xl">×</button>
+    <h3 id="popup-user-name" class="text-xl font-semibold mb-4">Управление: <span class="text-indigo-600"></span></h3>
+    <div class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Новое имя:</label>
+        <input id="popup-new-username" class="w-full border border-gray-300 rounded-md px-4 py-2 mb-4" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Новый email:</label>
+        <input id="popup-new-email" class="w-full border border-gray-300 rounded-md px-4 py-2 mb-4" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Роль:</label>
+        <select id="popup-role-select" class="w-full border border-gray-300 rounded-md px-4 py-2 mb-4">
+          <option value="user">Пользователь</option>
+          <option value="admin">Администратор</option>
+          <option value="banned">Забанен</option>
+        </select>
+      </div>
+      <div class="flex justify-between">
+        <button onclick="saveUserChanges()" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Сохранить</button>
+        <button onclick="deleteUser()" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">Удалить</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="book-popup" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center">
+  <div class="bg-white w-96 p-6 rounded-lg shadow-lg relative">
+    <button onclick="closeBookPopup()" class="absolute top-2 right-2 text-xl">×</button>
+    <h3 id="popup-book-title" class="text-xl font-semibold mb-4">Редактирование книги: <span class="text-indigo-600"></span></h3>
+    <div class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Новое название:</label>
+        <input id="popup-book-new-title" class="w-full border border-gray-300 rounded-md px-4 py-2 mb-4" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Жанр:</label>
+        <select id="popup-book-genre" class="w-full border border-gray-300 rounded-md px-4 py-2 mb-4">
+          <option value="">Выберите жанр</option>
+          <option value="fantasy">Фэнтези</option>
+          <option value="sci-fi">Научная фантастика</option>
+          <option value="romance">Романтика</option>
+          <option value="mystery">Детектив</option>
+          <option value="adventure">Приключения</option>
+          <option value="drama">Драма</option>
+          <option value="comedy">Комедия</option>
+          <option value="horror">Ужасы</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Текст книги:</label>
+        <textarea id="popup-book-content" rows="10" class="w-full border border-gray-300 rounded-md px-4 py-2 mb-4"></textarea>
+      </div>
+      <div class="flex justify-between">
+        <button onclick="saveBookChanges()" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Сохранить</button>
+        <button onclick="deleteCurrentBook()" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">Удалить</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+{% block extra_scripts %}
+
+<script>
+  document.getElementById("search-users").addEventListener("input", function () {
+    const searchValue = this.value.toLowerCase();
+    const rows = document.querySelectorAll("#users-table tbody tr");
+
+    rows.forEach(row => {
+      const username = row.children[1].textContent.toLowerCase();
+      const email = row.children[2].textContent.toLowerCase();
+
+      if (username.includes(searchValue) || email.includes(searchValue)) {
+        row.style.display = "";
+      } else {
+        row.style.display = "none";
+      }
+    });
+  });
+
+  async function searchGlobal() {
+  const query = document.getElementById("search-users").value.trim();
+
+  // убираем alert если пусто — просто отдаем пустую строку на сервер
+
+  try {
+    const res = await fetch(`/api/admin/search-users?q=${encodeURIComponent(query)}`);
+    if (!res.ok) {
+      const error = await res.json();
+      alert(`Ошибка: ${error.detail}`);
+      return;
+    }
+
+    const users = await res.json();
+
+    const tbody = document.querySelector("#users-table tbody");
+    tbody.innerHTML = "";
+
+    if (users.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-gray-500">Ничего не найдено</td></tr>`;
+      return;
+    }
+
+    for (const user of users) {
+      const roleLabel = user.account_type === "admin"
+        ? `<span class="inline-block bg-red-100 text-red-700 px-2 py-1 rounded">Admin</span>`
+        : user.account_type === "banned"
+        ? `<span class="inline-block bg-gray-100 text-gray-700 px-2 py-1 rounded">Забанен</span>`
+        : `<span class="inline-block bg-green-100 text-green-700 px-2 py-1 rounded">Пользователь</span>`;
+
+      const row = `
+        <tr data-id="${user.id}" class="hover:bg-gray-50 role-${user.account_type}">
+          <td class="px-4 py-2">${user.id}</td>
+          <td class="px-4 py-2 font-medium">${user.username}</td>
+          <td class="px-4 py-2">${user.email}</td>
+          <td class="px-4 py-2 text-sm text-gray-500">${user.created_at}</td>
+          <td class="px-4 py-2">${roleLabel}</td>
+          <td class="px-4 py-2 space-x-2">
+            <button
+              class="text-indigo-600 hover:text-indigo-800"
+              data-id="${user.id}"
+              data-username="${user.username}"
+              data-email="${user.email}"
+              data-type="${user.account_type}"
+              onclick="openUserPopup(this.dataset.id, this.dataset.username, this.dataset.email, this.dataset.type)">
+              Управлять
+            </button>
+          </td>
+        </tr>
+      `;
+      tbody.insertAdjacentHTML("beforeend", row);
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Произошла ошибка при поиске.");
+  }
+}
+</script>
+
+
+
+<script>
+  let loadedBooks = [];
+
+  // --- Загрузка книг ---
+  async function loadAllBooks() {
+    const query = document.getElementById("book-search").value.trim();
+
+    const url = new URL("/api/admin/books", window.location.origin);
+    if (query) url.searchParams.append("query", query);
+
+    try {
+      const res = await fetch(url);
+      const books = await res.json();
+      loadedBooks = books;
+
+      const tbody = document.getElementById("books-body");
+      tbody.innerHTML = "";
+
+      books.forEach(book => {
+        const tr = document.createElement("tr");
+        tr.dataset.id = book.id;
+        tr.className = `book-entry genre-${book.genre || 'unknown'} author-${book.author_name}`;
+        tr.innerHTML = `
+          <td class="px-4 py-2">${book.id}</td>
+          <td class="px-4 py-2 font-medium">${book.title}</td>
+          <td class="px-4 py-2">${book.author_name}</td>
+          <td class="px-4 py-2">${book.genre || 'Не указан'}</td>
+          <td class="px-4 py-2 text-xs text-gray-500">${new Date(book.created_at).toLocaleDateString()}</td>
+          <td class="px-4 py-2 space-x-2">
+            <a href="/book/${book.id}" class="text-indigo-600 hover:text-indigo-800">Просмотреть</a>
+            <button onclick="openBookPopup(${book.id}, '${book.title}', '${book.genre || ''}')" class="text-green-600 hover:text-green-800">Редактировать</button>
+            <button onclick="deleteBook(${book.id})" class="text-red-600 hover:text-red-800">Удалить</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    } catch (e) {
+      console.error("Ошибка загрузки книг:", e);
+      alert("Ошибка при загрузке книг");
+    }
+  }
+
+  // --- Поиск по книгам ---
+  document.getElementById("book-search").addEventListener("input", function () {
+    const query = this.value.toLowerCase();
+
+    const filtered = loadedBooks.filter(book =>
+      book.title.toLowerCase().includes(query)
+    );
+
+    renderBooks(filtered);
+  });
+
+  function renderBooks(books) {
+    const tbody = document.getElementById("books-body");
+    tbody.innerHTML = "";
+
+    books.forEach(book => {
+      const tr = document.createElement("tr");
+      tr.dataset.id = book.id;
+      tr.className = `book-entry genre-${book.genre || 'unknown'} author-${book.author_name}`;
+
+      tr.innerHTML = `
+        <td class="px-4 py-2">${book.id}</td>
+        <td class="px-4 py-2 font-medium">${book.title}</td>
+        <td class="px-4 py-2">${book.author_name}</td>
+        <td class="px-4 py-2">${book.genre || 'Не указан'}</td>
+        <td class="px-4 py-2 text-xs text-gray-500">${new Date(book.created_at).toLocaleString()}</td>
+        <td class="px-4 py-2 space-x-2">
+          <a href="/book/${book.id}" class="text-indigo-600 hover:text-indigo-800">Просмотреть</a>
+          <button onclick="openBookPopup(${book.id}, '${book.title}', '${book.genre || ''}')" class="text-green-600 hover:text-green-800">Редактировать</button>
+          <button onclick="deleteBook(${book.id})" class="text-red-600 hover:text-red-800">Удалить</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // --- Удаление книги ---
+  async function deleteBook(book_id) {
+    if (!confirm("Вы уверены? Это действие нельзя отменить.")) return;
+
+    const res = await fetch(`/api/admin/book/${book_id}`, {
+      method: "DELETE"
+    });
+
+    if (!res.ok) {
+      alert("Ошибка удаления");
+      return;
+    }
+
+    const row = document.querySelector(`#books-table tr[data-id='${book_id}']`);
+    if (row) row.remove();
+
+    // Удаляем из локального массива
+    loadedBooks = loadedBooks.filter(b => b.id !== book_id);
+  }
+
+  // --- Редактирование книги (открытие popup) ---
+  let selectedBookId = null;
+
+  function openBookPopup(id, title, genre) {
+    selectedBookId = id;
+
+    document.getElementById("popup-book-new-title").value = title;
+    document.getElementById("popup-book-genre").value = genre;
+    
+    // Получаем содержимое книги
+    fetch(`/api/admin/book/${id}`)
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById("popup-book-content").value = data.content;
+        document.getElementById("book-popup").classList.remove("hidden");
+      })
+      .catch(err => {
+        alert("Ошибка загрузки текста книги");
+        console.error(err);
+      });
+  }
+
+  function closeBookPopup() {
+    document.getElementById("book-popup").classList.add("hidden");
+    selectedBookId = null;
+  }
+
+  // --- Сохранение изменений ---
+  async function saveBookChanges() {
+    const newTitle = document.getElementById("popup-book-new-title").value.trim();
+    const newGenre = document.getElementById("popup-book-genre").value;
+    const newContent = document.getElementById("popup-book-content").value.trim();
+
+    if (!newTitle || !newGenre || !newContent) {
+      alert("Все поля обязательны");
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/admin/book/${selectedBookId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: newTitle,
+          genre: newGenre,
+          content: newContent
+        })
+      });
+
+      if (!res.ok) {
+        throw new Error("Ошибка сохранения");
+      }
+
+      // Обновляем локальный список
+      const index = loadedBooks.findIndex(b => b.id === selectedBookId);
+      if (index > -1) {
+        loadedBooks[index].title = newTitle;
+        loadedBooks[index].genre = newGenre;
+        loadedBooks[index].content = newContent;
+      }
+
+      // Обновляем таблицу
+      renderBooks(loadedBooks);
+
+      // Закрываем popup
+      closeBookPopup();
+
+    } catch (err) {
+      alert("Ошибка сохранения книги");
+      console.error(err);
+    }
+  }
+
+  // --- Инициализация ---
+  window.addEventListener("DOMContentLoaded", () => {
+    loadAllBooks(); // Загружаем первые 10 или все книги
+  });
+</script>
+
+
+
+<script>
+  function openUserPopup(id, username, email, type) {
+    document.getElementById("popup-user-name").querySelector("span").textContent = username;
+    document.getElementById("popup-new-username").value = username;
+    document.getElementById("popup-new-email").value = email;
+    document.getElementById("popup-role-select").value = type;
+
+    // Сохраняем ID в dataset popup окна
+    document.getElementById("user-popup").dataset.userid = id;
+
+    document.getElementById("user-popup").classList.remove("hidden");
+  }
+
+  function closeUserPopup() {
+    document.getElementById("user-popup").classList.add("hidden");
+  }
+
+  async function saveUserChanges() {
+    const id = document.getElementById("user-popup").dataset.userid;
+    const newUsername = document.getElementById("popup-new-username").value;
+    const newEmail = document.getElementById("popup-new-email").value;
+    const newRole = document.getElementById("popup-role-select").value;
+
+    try {
+      const response = await fetch(`/api/admin/user/${id}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          username: newUsername,
+          email: newEmail,
+          role: newRole
+        })
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        alert(`Ошибка: ${data.detail}`);
+        return;
+      }
+
+      alert("Пользователь успешно обновлён!");
+      location.reload(); // Обновляем страницу, чтобы увидеть изменения
+    } catch (err) {
+      alert("Произошла ошибка при обновлении.");
+      console.error(err);
+    }
+  }
+
+  async function deleteUser() {
+    const id = document.getElementById("user-popup").dataset.userid;
+
+    if (!confirm("Точно удалить этого пользователя?")) return;
+
+    try {
+      const response = await fetch(`/api/admin/user/${id}`, {
+        method: "DELETE"
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        alert(`Ошибка: ${data.detail}`);
+        return;
+      }
+
+      alert("Пользователь удалён.");
+      location.reload();
+    } catch (err) {
+      alert("Произошла ошибка при удалении.");
+      console.error(err);
+    }
+  }
+</script>
+
+<script>
+  let loadedLogs = [];
+
+  document.getElementById("load-logs-btn")?.addEventListener("click", () => {
+    loadLogs();
+  });
+
+  async function loadLogs() {
+    const filters = {
+      from_date: document.getElementById("log-filter-from")?.value,
+      to_date: document.getElementById("log-filter-to")?.value,
+      from_time: document.getElementById("log-time-from")?.value,
+      to_time: document.getElementById("log-time-to")?.value,
+      action_type: document.getElementById("log-filter-type")?.value,
+      user_id: document.getElementById("log-filter-user")?.value,
+      query: document.getElementById("log-search")?.value.trim()
+    };
+
+    try {
+      const url = new URL("/api/admin/logs", window.location.origin);
+      Object.entries(filters).forEach(([k, v]) => {
+        if (v) url.searchParams.append(k, v);
+      });
+
+      const response = await fetch(url);
+      const logs = await response.json();
+
+      loadedLogs = logs;
+      renderLogs(logs);
+    } catch (e) {
+      alert("Ошибка загрузки логов");
+      console.error(e);
+    }
+  }
+
+  function renderLogs(logs) {
+    const tbody = document.getElementById("logs-body");
+    if (!tbody) return;
+
+    tbody.innerHTML = "";
+
+    logs.forEach(log => {
+      const tr = document.createElement("tr");
+      tr.className = `log-entry type-${log.action_type || 'unknown'} user-${log.user_id || 'anon'}`;
+      tr.dataset.actionType = log.action_type || "";
+      tr.dataset.userId = log.user_id || "";
+
+      tr.innerHTML = `
+        <td class="px-4 py-2">${log.id}</td>
+        <td class="px-4 py-2">${log.action}</td>
+        <td class="px-4 py-2">
+          <span class="inline-block bg-blue-100 text-blue-700 px-2 py-1 rounded">${log.action_type || 'Неизвестное действие'}</span>
+        </td>
+        <td class="px-4 py-2 text-gray-600">${log.ip_address}</td>
+        <td class="px-4 py-2 text-xs text-gray-500">${new Date(log.created_at).toLocaleString()}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function filterLogsLocally() {
+    const filters = {
+      from_date: document.getElementById("log-filter-from")?.value,
+      to_date: document.getElementById("log-filter-to")?.value,
+      from_time: document.getElementById("log-time-from")?.value,
+      to_time: document.getElementById("log-time-to")?.value,
+      action_type: document.getElementById("log-filter-type")?.value,
+      user_id: document.getElementById("log-filter-user")?.value,
+      query: (document.getElementById("log-search")?.value || "").toLowerCase()
+    };
+
+    const rows = document.querySelectorAll("#logs-body tr");
+
+    rows.forEach(row => {
+      const action = row.cells[1].textContent.toLowerCase();
+      const type = row.dataset.actionType;
+      const userId = row.dataset.userId;
+
+      const timeStr = row.cells[4].textContent; // "23.05.2025 16:07:19"
+      const [datePart, timePart] = timeStr.split(" ");
+      const [day, month, year] = datePart.split(".");
+      const [hours, minutes, seconds] = timePart.split(":");
+      const date = new Date(`${year}-${month}-${day}T${hours}:${minutes}:${seconds}`);
+
+      let matchDate = true;
+      if (filters.from_date) {
+        matchDate = date >= new Date(filters.from_date + "T00:00:00");
+      }
+      if (filters.to_date) {
+        matchDate = matchDate && (date <= new Date(filters.to_date + "T23:59:59"));
+      }
+
+      let matchTime = true;
+      if (filters.from_time) {
+        const [ftH, ftM] = filters.from_time.split(":").map(Number);
+        const logH = date.getHours(), logM = date.getMinutes();
+        matchTime = (logH > ftH) || (logH === ftH && logM >= ftM);
+      }
+      if (filters.to_time) {
+        const [ttH, ttM] = filters.to_time.split(":").map(Number);
+        const logH = date.getHours(), logM = date.getMinutes();
+        matchTime = matchTime && ((logH < ttH) || (logH === ttH && logM <= ttM));
+      }
+
+      const matchActionType = !filters.action_type || filters.action_type === type;
+      const matchUserId = !filters.user_id || filters.user_id === userId;
+      const matchQuery = !filters.query || action.includes(filters.query);
+
+      row.style.display = (matchDate && matchTime && matchActionType && matchUserId && matchQuery) ? "table-row" : "none";
+    });
+  }
+
+  // Привязываем фильтры
+  ["log-filter-from", "log-filter-to", "log-time-from", "log-time-to", "log-filter-type", "log-filter-user", "log-search"].forEach(id => {
+    document.getElementById(id)?.addEventListener(id === "log-search" ? "input" : "change", filterLogsLocally);
+  });
+
+  window.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("search-users")?.dispatchEvent(new Event("input"));
+  });
+</script>
+
+<script>
+  // IP BAN
+  async function addBlockedIP() {
+    const ipInput = document.getElementById("new-ip");
+    const ip = ipInput.value.trim();
+    if (!ip) return alert("Введите IP");
+
+    try {
+      const res = await fetch("/api/admin/ip/block", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ ip })
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.detail || "Ошибка при блокировке IP");
+        return;
+      }
+
+      const data = await res.json();
+      addRowToIPTable(data.ip);
+      ipInput.value = ""; // Очистка поля
+    } catch (err) {
+      console.error("Ошибка:", err);
+      alert("Ошибка при блокировке IP");
+    }
+  }
+
+  async function removeBlockedIP(button) {
+    const row = button.closest("tr");
+    const ip = row.dataset.ip;
+
+    if (!confirm(`Разблокировать IP ${ip}?`)) return;
+
+    try {
+      const res = await fetch("/api/admin/ip/unblock", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ ip })
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.detail || "Ошибка при разблокировке IP");
+        return;
+      }
+
+      row.remove();
+    } catch (err) {
+      console.error("Ошибка:", err);
+      alert("Ошибка при разблокировке IP");
+    }
+  }
+
+  function addRowToIPTable(ip) {
+    const tableBody = document.getElementById("ip-body");
+
+    const tr = document.createElement("tr");
+    tr.dataset.ip = ip;
+
+    tr.innerHTML = `
+      <td class="px-4 py-2">${ip}</td>
+      <td class="px-4 py-2 text-xs text-gray-500">${new Date().toLocaleString()}</td>
+      <td class="px-4 py-2">
+        <button onclick="removeBlockedIP(this)" class="text-red-600 hover:text-red-800">Удалить</button>
+      </td>
+    `;
+
+    tableBody.prepend(tr);
+  }
+</script>
+
+{% endblock %}

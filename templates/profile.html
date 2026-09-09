@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Профиль - StoryCraftAI{% endblock %}
+
+{% block content %}
+  <!-- Main Content -->
+  <main class="flex-grow py-10 px-4">
+    <!-- Back Button -->
+    <div class="max-w-2xl mx-auto mb-6">
+      <a href="/" class="inline-flex items-center text-indigo-600 hover:text-indigo-800 transition font-medium">
+        <i class="fas fa-arrow-left mr-2"></i>
+        Назад на главную
+      </a>
+    </div>
+
+    <!-- Profile Card -->
+    <div class="max-w-2xl mx-auto bg-white rounded-lg shadow-md overflow-hidden">
+      <div class="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-white">
+        <h1 class="text-2xl md:text-3xl font-bold flex items-center">
+          <i class="fas fa-user-circle text-white mr-3"></i> Ваш профиль
+        </h1>
+      </div>
+
+      <div class="p-6 space-y-6">
+        <!-- User Info -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+            <p class="text-xs uppercase tracking-wider text-indigo-700 font-semibold">Имя пользователя</p>
+            <p class="mt-1 text-lg font-medium text-gray-800">{{ username }}</p>
+          </div>
+          <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+            <p class="text-xs uppercase tracking-wider text-indigo-700 font-semibold">Email</p>
+            <p class="mt-1 text-lg font-medium text-gray-800">{{ email }}</p>
+          </div>
+          <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+            <p class="text-xs uppercase tracking-wider text-indigo-700 font-semibold">Дата регистрации</p>
+            <p class="mt-1 text-lg font-medium text-gray-800">{{ created_at }}</p>
+          </div>
+          <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+            <p class="text-xs uppercase tracking-wider text-indigo-700 font-semibold">Количество книг</p>
+            <p class="mt-1 text-lg font-medium text-gray-800">{{ book_count }}</p>
+          </div>
+        </div>
+
+        <!-- Popular Genre -->
+        {% if popular_genre %}
+          <div class="mt-4">
+            <p class="text-sm text-gray-600">
+              <strong>Популярный жанр:</strong> {{ popular_genre }}
+            </p>
+          </div>
+        {% endif %}
+
+        <hr class="my-6 border-t border-gray-200" />
+
+        <!-- Danger Zone -->
+        <div class="mt-8">
+          <h2 class="text-lg font-semibold text-gray-800 mb-2">Опасные действия</h2>
+          <button onclick="confirmDelete()" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition duration-200 flex items-center">
+            <i class="fas fa-trash-alt mr-2"></i> Удалить аккаунт
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+{% endblock %}
+{% block extra_scripts %}
+  <!-- JS for deleting account -->
+  <script>
+    function confirmDelete() {
+      if (confirm("Вы уверены, что хотите удалить аккаунт? Это действие нельзя отменить.")) {
+        fetch('/delete_account', { method: 'POST' })
+          .then(res => {
+            if (res.ok) window.location.href = '/';
+          });
+      }
+    }
+  </script>
+{% endblock %}

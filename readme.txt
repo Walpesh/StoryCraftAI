@@ -1,0 +1,3 @@
+-> cd [folder]
+-> .\venv\Scripts\activate
+-> fastapi dev main.py

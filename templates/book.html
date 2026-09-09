@@ -1,0 +1,358 @@
+{% extends "base.html" %}
+{% block title %}{{ book.title }} - StoryCraftAI{% endblock %}
+
+{% block content %}
+  <main class="flex-grow py-10 px-4">
+    <div class="max-w-4xl mx-auto bg-white rounded-lg shadow-md p-8">
+      <!-- Заголовок с возможностью редактирования -->
+      <div class="title-container flex justify-between items-start">
+        <h1 class="book-title-display text-3xl font-bold mb-2">{{ book.title }}</h1>
+        
+        <!-- Кнопка редактирования (отображается только если is_owner_or_admin) -->
+        {% if is_owner_or_admin %}
+          <button type="button"
+                  onclick="enableTitleEdit(this, '{{ book.id }}', '{{ book.title | e }}')"
+                  class="ml-4 text-gray-500 hover:text-indigo-600 transition">
+            <i class="fas fa-edit"></i>
+          </button>
+        {% endif %}
+      </div>
+
+      <!-- Автор -->
+      <p class="text-gray-600 mb-1">Автор: {{ book.author_name }}</p>
+
+      <!-- Основная информация -->
+      <div class="flex flex-wrap gap-2 mb-4">
+        <span class="px-3 py-1 text-sm font-medium rounded-full bg-gray-100 text-gray-800">Жанр: {{ book.genre or 'Не указан' }}</span>
+        <span class="px-3 py-1 text-sm font-medium rounded-full bg-gray-100 text-gray-800">Дата: {{ book.created_at.strftime("%d.%m.%Y") }}</span>
+        <span class="px-3 py-1 text-sm font-semibold rounded-full
+          {% if book.is_published %}
+            bg-green-100 text-green-800">Опубликована
+          {% else %}
+            bg-red-100 text-red-800">Черновик
+          {% endif %}
+        </span>
+
+        <!-- Кнопка "Параметры" -->
+        <button id="toggle-params-btn"
+                class="ml-auto px-3 py-1 text-sm font-medium rounded-full bg-indigo-100 text-indigo-800 hover:bg-indigo-200 transition">
+          Параметры ▼
+        </button>
+      </div>
+
+      <!-- Дополнительные параметры (скрыты по умолчанию) -->
+      <div id="book-params" class="hidden mb-6 grid grid-cols-1 md:grid-cols-2 gap-3">
+        <span class="px-3 py-1 text-sm font-medium rounded-full bg-blue-100 text-blue-800">Язык: {{ book.language or 'Не указан' }}</span>
+        <span class="px-3 py-1 text-sm font-medium rounded-full bg-purple-100 text-purple-800">Тон: {{ book.tone or 'Не указан' }}</span>
+        <span class="px-3 py-1 text-sm font-medium rounded-full bg-indigo-100 text-indigo-800">Повествование: {{ book.point_of_view or 'Не указано' }}</span>
+      </div>
+
+      <hr class="mb-6" />
+      <!-- Блок для содержимого книги с пагинацией -->
+      <div id="book-content" class="whitespace-pre-wrap text-gray-800 mb-6"></div>
+
+      <!-- Пагинация -->
+      <div class="flex flex-wrap justify-between items-center mb-6">
+        <button id="prev-page" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition">Назад</button>
+
+        <div id="pagination-buttons" class="inline-flex space-x-1 my-2"></div> <!-- Кнопки страниц -->
+
+        <span id="page-info" class="text-gray-600 hidden md:block"></span>
+
+        <button id="next-page" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition">Вперед</button>
+      </div>
+
+      <!-- Кнопка продолжения истории -->
+      {% if is_owner_or_admin %}
+        <div class="mb-6">
+          <button id="continue-book-btn"
+                  onclick="continueBook('{{ book.id }}')"
+                  class="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition">
+            Продолжить историю
+          </button>
+        </div>
+      {% endif %}
+
+      <!-- Кнопки управления -->
+      <div class="mt-6 flex space-x-4">
+        {% if is_owner_or_admin %}
+          {% if book.is_published %}
+            <form action="/unpublish_book/{{ book.id }}" method="post">
+              <button type="submit" onclick="return confirm('Снять книгу с публикации?')" class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition">Снять с публикации</button>
+            </form>
+            <button type="button"
+                    onclick="downloadBookAsPDF()"
+                    class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
+              <i class="fas fa-download mr-2"></i> Скачать PDF
+            </button>
+          {% else %}
+            <form action="/publish_book/{{ book.id }}" method="post">
+              <button type="submit" onclick="return confirm('Опубликовать эту книгу?')" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition">Опубликовать</button>
+            </form>
+          {% endif %}
+
+          <a href="/delete_book/{{ book.id }}" onclick="return confirm('Удалить эту книгу?')" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition">Удалить</a>
+        {% endif %}
+
+        <a href="{{ referer }}" class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition">Назад</a>
+      </div>
+    </div>
+  </main>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js "></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js "></script>
+<script>
+function enableTitleEdit(element, bookId, currentTitle) {
+  const titleContainer = element.closest('.title-container');
+  const titleElement = titleContainer.querySelector('.book-title-display');
+
+  // Если уже в режиме редактирования — выходим
+  if (titleElement.dataset.editing === "true") return;
+
+  // Скрываем кнопку редактирования
+  element.style.display = "none";
+
+  titleElement.dataset.editing = "true";
+  titleElement.dataset.originalTitle = currentTitle;
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.value = currentTitle;
+  input.className = "w-full px-2 py-1 border rounded text-lg font-semibold";
+
+  // Заменяем текст на инпут
+  titleElement.innerHTML = "";
+  titleElement.appendChild(input);
+
+  // Создаём кнопки Сохранить и Отменить
+  const buttons = document.createElement("div");
+  buttons.className = "mt-2 space-x-2";
+
+  const saveBtn = document.createElement("button");
+  saveBtn.textContent = "Сохранить";
+  saveBtn.className = "px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-sm transition";
+  saveBtn.onclick = () => {
+    const newTitle = input.value.trim();
+    if (newTitle === currentTitle) {
+      disableTitleEdit(titleElement, currentTitle, element);
+      return;
+    }
+
+    fetch(`/api/books/${bookId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: newTitle })
+    }).then(res => {
+      if (res.ok) {
+        res.json().then(data => {
+          disableTitleEdit(titleElement, data.title || newTitle, element);
+        });
+      } else {
+        alert("Ошибка при сохранении названия");
+        disableTitleEdit(titleElement, currentTitle, element);
+      }
+    });
+  };
+
+  const cancelBtn = document.createElement("button");
+  cancelBtn.textContent = "Отменить";
+  cancelBtn.className = "px-3 py-1 bg-gray-300 hover:bg-gray-400 rounded text-sm transition";
+  cancelBtn.onclick = () => {
+    disableTitleEdit(titleElement, currentTitle, element);
+  };
+
+  buttons.appendChild(saveBtn);
+  buttons.appendChild(cancelBtn);
+
+  titleElement.appendChild(buttons);
+}
+
+function disableTitleEdit(titleElement, originalTitle, editButtonElement) {
+  titleElement.dataset.editing = "false";
+  titleElement.innerHTML = `<h1 class="book-title-display text-3xl font-bold mb-2">${originalTitle}</h1>`;
+  
+  // Восстанавливаем кнопку редактирования
+  if (editButtonElement) {
+    editButtonElement.style.display = "inline-block";
+  }
+}
+
+// Логика кнопки "Параметры"
+  const toggleBtn = document.getElementById("toggle-params-btn");
+  const paramsBox = document.getElementById("book-params");
+
+  toggleBtn.addEventListener("click", () => {
+    paramsBox.classList.toggle("hidden");
+
+    // Меняем стрелочку в зависимости от состояния
+    const isHidden = paramsBox.classList.contains("hidden");
+    toggleBtn.innerHTML = `Параметры ${isHidden ? '▼' : '▲'}`;
+  });
+</script>
+<script>
+function downloadBookAsPDF() {
+  const { jsPDF } = window.jspdf;
+  const content = document.querySelector("pre"); // Текст книги
+  const title = "{{ book.title | e }}".replace(/[<>:"\/\\|?*\x00-\x1F]/g, '_'); // Очистка названия
+
+  if (!content) {
+    alert("Не найдено содержимое книги для экспорта.");
+    return;
+  }
+
+  html2canvas(content, {
+    scale: 2, // Увеличиваем разрешение
+    useCORS: true, // Позволяет загружать картинки с других доменов
+    logging: false,
+    letterRendering: true
+  }).then(canvas => {
+    const imgData = canvas.toDataURL('image/jpeg', 1.0);
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pdfWidth = 210;
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+    pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+    pdf.save(`${title}.pdf`);
+  });
+}
+</script>
+
+<script>
+// === ПАГИНАЦИЯ С НОМЕРАМИ СТРАНИЦ ===
+let pages = [];
+let currentPage = 0;
+
+function getPages(fullText, pageSize = 3000) {
+    const paragraphs = fullText.split('\n\n');
+    const pages = [];
+    let currentPageContent = '';
+
+    for (const para of paragraphs) {
+        if ((currentPageContent + para).length > pageSize) {
+            pages.push(currentPageContent);
+            currentPageContent = para;
+        } else {
+            currentPageContent += '\n\n' + para;
+        }
+    }
+
+    if (currentPageContent.trim()) {
+        pages.push(currentPageContent);
+    }
+
+    return pages;
+}
+
+function renderPage(index) {
+    document.getElementById('book-content').innerText = pages[index];
+    document.getElementById('page-info').innerText = `Страница ${index + 1} из ${pages.length}`;
+    updatePaginationButtons();
+}
+
+function updatePaginationButtons() {
+    const container = document.getElementById('pagination-buttons');
+    container.innerHTML = '';
+    const totalPages = pages.length;
+    const maxVisiblePages = 5; // Максимум отображаемых кнопок
+    let start = Math.max(0, currentPage - Math.floor(maxVisiblePages / 2));
+    let end = Math.min(totalPages - 1, start + maxVisiblePages - 1);
+
+    // Если конец меньше, чем maxVisiblePages, сдвигаем начало
+    if (end - start + 1 < maxVisiblePages) {
+        start = Math.max(0, end - maxVisiblePages + 1);
+    }
+
+    // Кнопка "1..."
+    if (start > 0) {
+        const btn = createPageButton(0, '1…');
+        container.appendChild(btn);
+    }
+
+    // Основные кнопки страниц
+    for (let i = start; i <= end; i++) {
+        const btn = createPageButton(i, i + 1);
+        if (i === currentPage) {
+            btn.classList.add('bg-indigo-700', 'text-white');
+            btn.disabled = true;
+        }
+        container.appendChild(btn);
+    }
+
+    // Кнопка "...n"
+    if (end < totalPages - 1) {
+        const btn = createPageButton(totalPages - 1, `…${totalPages}`);
+        container.appendChild(btn);
+    }
+}
+
+function createPageButton(index, label) {
+    const btn = document.createElement('button');
+    btn.textContent = label;
+    btn.className = 'px-3 py-1 bg-white border border-indigo-600 text-indigo-600 rounded hover:bg-indigo-100 transition';
+    btn.type = 'button';
+    btn.onclick = () => {
+        currentPage = index;
+        renderPage(currentPage);
+    };
+    return btn;
+}
+
+// Обработчики событий
+document.getElementById('next-page').addEventListener('click', () => {
+    if (currentPage < pages.length - 1) {
+        currentPage++;
+        renderPage(currentPage);
+    }
+});
+
+document.getElementById('prev-page').addEventListener('click', () => {
+    if (currentPage > 0) {
+        currentPage--;
+        renderPage(currentPage);
+    }
+});
+
+// Загрузка текста при старте
+fetch(`/api/book/{{ book.id }}/text`)
+    .then(res => res.json())
+    .then(data => {
+        pages = getPages(data.content);
+        currentPage = 0;
+        renderPage(currentPage);
+    });
+
+// === ПРОДОЛЖЕНИЕ ИСТОРИИ ===
+async function continueBook(bookId) {
+    const btn = document.getElementById("continue-book-btn");
+    btn.disabled = true;
+    btn.innerText = "Продолжается...";
+
+    fetch('/api/continue-book', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ book_id: bookId }) // Убедитесь, что bookId — число
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Ошибка сети или сервер вернул ошибку');
+        }
+        return response.json();
+    })
+    .then(data => {
+        alert("Книга успешно продолжена!");
+        location.reload(); // Перезагрузка страницы
+    })
+    .catch(error => {
+        console.error('Ошибка:', error);
+        alert("Произошла ошибка при продолжении книги.");
+        btn.disabled = false;
+        btn.innerText = "Продолжить историю";
+    });
+}
+</script>
+
+{% endblock %}

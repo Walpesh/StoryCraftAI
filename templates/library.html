@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}Библиотека - StoryCraftAI{% endblock %}
+
+{% block content %}
+  <main class="flex-grow py-10 px-4">
+    <div class="max-w-6xl mx-auto px-4">
+
+      <!-- Заголовок -->
+      <h1 class="text-3xl font-bold mb-6 text-indigo-700 flex items-center">
+        <i class="fas fa-book-open mr-3"></i> Моя библиотека
+      </h1>
+
+      <!-- Поиск и кнопка создания -->
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <div class="w-full md:w-1/2 relative">
+          <input type="text" id="searchInput" placeholder="Поиск по названию..." class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+        <a href="/generate" class="px-5 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-md shadow hover:from-indigo-700 hover:to-purple-700 transition duration-200">
+          + Создать новую книгу
+        </a>
+      </div>
+
+      <!-- Блок с книгами -->
+      <div id="books-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% if books|length > 0 %}
+          {% for book in books %}
+            <div class="book-card bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+              <div class="p-4">
+                <div class="flex justify-between items-center">
+                  <h2 class="book-title text-xl font-semibold text-gray-800 mb-2">{{ book.title }}</h2>
+                  <button type="button" onclick="enableBookEdit(this, '{{ book.id }}', '{{ book.title | e }}')" class="text-gray-500 hover:text-indigo-600 transition">
+                    <i class="fas fa-edit"></i>
+                  </button>
+                </div>
+                <p class="text-sm text-gray-600 mb-1">Жанр: {{ book.genre or 'Не указан' }}</p>
+                <p class="text-xs text-gray-500">Дата: {{ book.created_at.strftime("%d.%m.%Y") }}</p>
+              </div>
+              <div class="p-4 border-t border-gray-100 flex justify-between items-center">
+                <div class="space-x-2">
+                  <a href="/book/{{ book.id }}" class="inline-block text-indigo-600 hover:text-indigo-800 transition">
+                    <i class="fas fa-eye"></i> Читать
+                  </a>
+                  <a href="/delete_book/{{ book.id }}" onclick="return confirm('Удалить эту книгу?')" class="inline-block text-red-600 hover:text-red-800 transition">
+                    <i class="fas fa-trash-alt"></i> Удалить
+                  </a>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="col-span-full flex flex-col items-center justify-center py-16 bg-white rounded-lg shadow">
+            <i class="fas fa-exclamation-circle text-indigo-400 text-5xl mb-4"></i>
+            <h2 class="text-xl font-semibold text-gray-700 mb-2">У тебя пока нет книг.</h2>
+            <a href="/generate" class="mt-2 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition">
+              Создай первую!
+            </a>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </main>
+{% endblock %}
+
+{% block extra_scripts %}
+  <!-- JS для поиска книг -->
+  <script>
+    const searchInput = document.getElementById("searchInput");
+    const cards = document.querySelectorAll(".book-card");
+
+    searchInput.addEventListener("input", () => {
+      const query = searchInput.value.toLowerCase();
+      cards.forEach(card => {
+        const title = card.querySelector("h2").textContent.toLowerCase();
+        card.style.display = title.includes(query) ? "block" : "none";
+      });
+    });
+    function enableBookEdit(element, bookId, currentTitle) {
+      const container = element.closest('.book-card');
+      const titleElement = container.querySelector('.book-title');
+
+      // Если уже в режиме редактирования — выходим
+      if (titleElement.dataset.editing === "true") return;
+
+      // Скрываем кнопку редактирования
+      element.style.display = "none";
+
+      titleElement.dataset.editing = "true";
+      titleElement.dataset.originalTitle = currentTitle;
+
+      const input = document.createElement("input");
+      input.type = "text";
+      input.value = currentTitle;
+      input.className = "w-full px-2 py-1 border rounded text-lg font-semibold";
+
+      // Заменяем текст на инпут
+      titleElement.innerHTML = "";
+      titleElement.appendChild(input);
+
+      // Создаём кнопки Сохранить и Отменить
+      const buttons = document.createElement("div");
+      buttons.className = "mt-2 space-x-2";
+
+      const saveBtn = document.createElement("button");
+      saveBtn.textContent = "Сохранить";
+      saveBtn.className = "px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-sm transition";
+      saveBtn.onclick = () => {
+        const newTitle = input.value.trim();
+        if (newTitle === currentTitle) {
+          disableBookEdit(titleElement, currentTitle, element);
+          return;
+        }
+
+        fetch(`/api/books/${bookId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: newTitle })
+        }).then(res => {
+          if (res.ok) {
+            res.json().then(data => {
+              disableBookEdit(titleElement, data.title || newTitle, element);
+            });
+          } else {
+            alert("Ошибка при сохранении названия");
+            disableBookEdit(titleElement, currentTitle, element);
+          }
+        });
+      };
+
+      const cancelBtn = document.createElement("button");
+      cancelBtn.textContent = "Отменить";
+      cancelBtn.className = "px-3 py-1 bg-gray-300 hover:bg-gray-400 rounded text-sm transition";
+      cancelBtn.onclick = () => {
+        disableBookEdit(titleElement, currentTitle, element);
+      };
+
+      buttons.appendChild(saveBtn);
+      buttons.appendChild(cancelBtn);
+
+      titleElement.appendChild(buttons);
+    }
+
+    function disableBookEdit(titleElement, originalTitle, editButtonElement) {
+      titleElement.dataset.editing = "false";
+      titleElement.innerHTML = `<h2 class="book-title text-xl font-semibold text-gray-800 mb-2">${originalTitle}</h2>`;
+      
+      // Восстанавливаем кнопку редактирования
+      if (editButtonElement) {
+        editButtonElement.style.display = "inline-block";
+      }
+    }
+  </script>
+{% endblock %}

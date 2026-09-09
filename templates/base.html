@@ -1,0 +1,221 @@
+<!-- templates/base.html -->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}StoryCraftAI{% endblock %}</title>
+  <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+
+  <!-- Подключение шрифтов -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter :wght@400;600;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com "></script>
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css ">
+  <script src="https://kit.fontawesome.com/a076d05399.js " crossorigin="anonymous"></script>
+
+  <!-- Стили -->
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #e0eafc, #cfdef3);
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+    }
+
+    @keyframes gradient {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    .animate-gradient-x {
+      background: linear-gradient(90deg, #667eea, #764ba2, #667eea);
+      background-size: 300% 300%;
+      animation: gradient 5s ease infinite;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .fade-in {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.6s ease-out;
+    }
+
+    .fade-in.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fadeIn {
+      animation: fadeIn 0.3s ease-out forwards;
+    }
+  </style>
+
+</head>
+<body class="text-gray-900 min-h-screen flex flex-col">
+  <!-- Header -->
+    <header class="bg-white/80 backdrop-blur-sm shadow-md p-4 flex justify-between items-center sticky top-0 z-50">
+    <!-- Логотип -->
+    <a href="/" class="text-2xl font-bold text-indigo-600 hover:text-indigo-800 transition duration-200 flex items-center gap-2">
+        <i class="fa-solid fa-book"></i> StoryCraftAI
+    </a>
+
+    <!-- Навигация и пользовательский блок -->
+    <div class="flex items-center space-x-4">
+        <!-- Кнопка бургера для мобильных -->
+        <button id="mobile-menu-button" class="md:hidden text-gray-700 focus:outline-none">
+        <i class="fas fa-bars text-xl"></i>
+        </button>
+
+        <!-- Навигация (скрывается на мобильных) -->
+        <nav id="desktop-nav" class="hidden md:flex items-center space-x-6 text-sm font-medium">
+        <a href="/" class="text-gray-700 hover:text-indigo-600 transition">Главная</a>
+        {% if user_auth %}
+          <a href="/catalog" class="text-gray-700 hover:text-indigo-600 transition">Каталог</a>
+            <a href="/library" class="text-gray-700 hover:text-indigo-600 transition">Библиотека</a>
+            {% if account_type == "admin" %}
+            <a href="/admin" class="text-red-600 font-bold hover:text-red-800 transition">Панель администратора</a>
+            {% endif %}
+            <!-- Блок пользователя -->
+            <div class="relative inline-block text-left">
+            <button id="dropdown-button" type="button"
+                class="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-md shadow-sm hover:bg-gray-50 transition duration-150 focus:outline-none focus:ring-2 focus:ring-indigo-300">
+                <i class="fa-solid fa-user-circle text-indigo-500"></i>
+                <span class="text-sm font-medium text-gray-700">{{ username }}</span>
+                <svg id="dropdown-arrow" class="w-4 h-4 text-gray-500 transition-transform" fill="none" stroke="currentColor"
+                viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </button>
+            <div id="dropdown-menu"
+                class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 hidden z-10">
+                <div class="py-1" role="menu">
+                <a href="/profile"
+                    class="block px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 rounded-t-md">Профиль</a>
+                <a href="/settings"
+                    class="block px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-700">Настройки</a>
+                <a href="/logout"
+                    class="block px-4 py-2 text-sm text-gray-700 hover:bg-red-50 hover:text-red-600 rounded-b-md">Выйти</a>
+                </div>
+            </div>
+            </div>
+        {% else %}
+            <a href="/auth" class="text-gray-700 hover:text-indigo-600 transition">Вход / Регистрация</a>
+        {% endif %}
+        </nav>
+
+        <!-- Мобильное меню -->
+        <div id="mobile-menu"
+            class="absolute top-full left-0 right-0 bg-white shadow-xl rounded-b-lg hidden flex-col p-5 space-y-4 z-40 md:hidden animate-fadeIn">
+          <a href="/" class="block text-gray-800 font-medium hover:text-indigo-600 transition">Главная</a>
+
+          {% if user_auth %}
+            <a href="/library" class="block text-gray-700 hover:text-indigo-600 transition">Библиотека</a>
+
+            {% if account_type == "admin" %}
+              <a href="/admin" class="block text-red-600 font-semibold hover:text-red-800 transition">Панель администратора</a>
+            {% endif %}
+
+            <a href="/profile" class="block text-gray-700 hover:text-indigo-600 transition">Профиль</a>
+            <a href="/settings" class="block text-gray-700 hover:text-indigo-600 transition">Настройки</a>
+            <a href="/logout" class="block text-gray-700 hover:text-red-600 transition">Выйти</a>
+          {% else %}
+            <a href="/auth" class="block text-gray-700 hover:text-indigo-600 transition">Вход / Регистрация</a>
+          {% endif %}
+        </div>
+    </div>
+    </header>
+
+  <!-- Основной контент -->
+  <main class="flex-grow">
+    {% block content %}
+    {% endblock %}
+  </main>
+
+  <!-- Footer -->
+  {% block footer %}
+    <footer class="bg-white/70 backdrop-blur-sm shadow-inner py-6 text-center text-sm text-gray-500 border-t border-white/50">
+      &copy; 2025 StoryCraftAI. Все права защищены.
+      
+      <div class="text-xs mt-2">
+        <a href="/feedbacks"
+          class="inline-flex items-center px-3 py-1 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 hover:text-indigo-900 rounded-md transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-200">
+          <i class="fas fa-comment-dots mr-1 text-xs"></i>
+          Оставить отзыв
+        </a>
+      </div>
+    </footer>
+  {% endblock %}
+
+  <!-- Глобальные скрипты -->
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      // Анимация появления элементов при прокрутке
+      const faders = document.querySelectorAll('.fade-in');
+      const appearOnScroll = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) return;
+          entry.target.classList.add('visible');
+        });
+      }, { threshold: 0.2 });
+
+      faders.forEach(el => {
+        el.classList.remove('visible');
+        appearOnScroll.observe(el);
+      });
+
+      // Dropdown меню пользователя
+      const button = document.getElementById('dropdown-button');
+      const menu = document.getElementById('dropdown-menu');
+      const arrow = document.getElementById('dropdown-arrow');
+
+      if (button && menu && arrow) {
+        button.addEventListener('click', () => {
+          const isOpen = !menu.classList.contains('hidden');
+          menu.classList.toggle('hidden');
+          arrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+        });
+
+        document.addEventListener('click', (e) => {
+          if (!button.contains(e.target) && !menu.contains(e.target)) {
+            menu.classList.add('hidden');
+            arrow.style.transform = 'rotate(0deg)';
+          }
+        });
+      } else {
+        console.warn('Элементы dropdown не найдены или частично отсутствуют');
+      }
+
+      // Логика мобильного меню
+      const mobileMenuButton = document.getElementById('mobile-menu-button');
+      const mobileMenu = document.getElementById('mobile-menu');
+
+      if (mobileMenuButton && mobileMenu) {
+        mobileMenuButton.addEventListener('click', () => {
+          mobileMenu.classList.toggle('hidden');
+        });
+
+        document.addEventListener('click', function (e) {
+          if (!mobileMenu.contains(e.target) && !mobileMenuButton.contains(e.target)) {
+            mobileMenu.classList.add('hidden');
+          }
+        });
+      } else {
+        console.warn('Элементы мобильного меню не найдены');
+      }
+    });
+  </script>
+
+  <!-- Блок для дополнительных скриптов на страницах наследниках -->
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

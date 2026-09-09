@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Каталог книг - StoryCraftAI{% endblock %}
+
+{% block content %}
+  <main class="flex-grow py-8 px-4">
+    <div class="max-w-6xl mx-auto">
+      <!-- Заголовок -->
+      <h1 class="text-4xl font-bold text-center mb-4">📚 Каталог опубликованных книг</h1>
+      <p class="text-center text-gray-600 mb-8">Всего книг: <span class="font-semibold">{{ total_books }}</span></p>
+
+      <!-- Сетка книг -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for book in books %}
+            <div class="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 border border-gray-100 hover:border-indigo-200 group">
+            <div class="p-6 flex flex-col h-full">
+                <h2 class="text-2xl font-bold text-indigo-800 group-hover:text-indigo-900 transition-colors duration-200 line-clamp-2">
+                {{ book.title }}
+                </h2>
+
+                <!-- Жанр и Автор -->
+                <p class="text-sm text-gray-500 mt-1">
+                    Жанр: {{ book.genre or 'Не указан' }}, Автор: 
+                    <span class="text-indigo-600 font-medium">{{ book.author_name }}</span>
+                </p>
+
+                <!-- Дата публикации -->
+                <p class="text-xs text-gray-400 mt-1">
+                {{ book.created_at.strftime("%d.%m.%Y") }}
+                </p>
+
+                <!-- Контент книги -->
+                <p class="mt-4 text-gray-700 line-clamp-3 text-sm leading-relaxed">
+                {{ book.content|truncate(150)|safe }}
+                </p>
+
+                <!-- Кнопка -->
+                <div class="mt-auto pt-5">
+                <a href="/book/{{ book.id }}" class="w-full inline-flex items-center justify-center px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transform group-hover:scale-[1.02]">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    Читать книгу
+                </a>
+                </div>
+            </div>
+            </div>
+        {% endfor %}
+        </div>
+
+      {% if books|length == 0 %}
+        <p class="text-center text-gray-500 mt-8">Нет доступных книг.</p>
+      {% endif %}
+    </div>
+  </main>
+{% endblock %}

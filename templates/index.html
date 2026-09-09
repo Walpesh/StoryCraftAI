@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+
+{% block title %}
+  Главная страница - StoryCraftAI
+{% endblock %}
+
+{% block content %}
+  <!-- Logo Title Section -->
+  <section class="py-12 text-center fade-in" id="logo-section">
+    <h1 class="text-5xl md:text-7xl font-black tracking-widest uppercase bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-transparent bg-clip-text animate-gradient-x">
+      STORYCRAFTAI
+    </h1>
+    <p class="mt-4 text-lg text-gray-600 max-w-xl mx-auto">
+      Создавайте книги с помощью искусственного интеллекта за считанные секунды.
+    </p>
+    <a href="#testimonials-section" id="scroll-to-feedbacks" class="
+      mt-3 text-lg text-gray-700 
+      hover:text-gray-900 
+      transition-all duration-300 ease-in-out
+      relative
+      after:content-[''] after:absolute after:bottom-0 after:left-1/2 after:w-0 after:h-[2px] 
+      after:bg-gradient-to-r after:from-indigo-500 after:via-purple-500 after:to-pink-500
+      hover:after:w-full hover:after:left-0
+      after:transition-all after:duration-500 after:ease-out
+      hover:scale-[1.015] origin-center
+      hover:tracking-wide
+    ">
+        Убедитесь сами — посмотрите, что о нас говорят пользователи
+    </a>
+  </section>
+
+  <!-- Hero Section -->
+  <section class="flex flex-col items-center justify-center py-20 px-4 min-h-[20vh] fade-in" id="hero-section">
+    <h2 class="text-4xl md:text-5xl font-extrabold mb-6 text-center max-w-3xl leading-tight">
+      Создай свою книгу с помощью ИИ за 1 клик
+    </h2>
+    <p class="text-lg text-gray-700 mb-10 text-center max-w-xl">
+      Напиши идею, выбери жанр и получи готовую историю мгновенно.
+    </p>
+    {% if user_auth %}
+      <!-- Авторизованный пользователь: редирект на /library -->
+      <a href="/library"
+        class="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-8 py-4 rounded-lg shadow-lg transform transition hover:scale-105 duration-200 font-semibold text-lg">
+        Перейти к книгам
+      </a>
+    {% else %}
+      <!-- Неавторизованный пользователь: обычная кнопка с id -->
+      <button id="generate-button"
+              class="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-8 py-4 rounded-lg shadow-lg transform transition hover:scale-105 duration-200 font-semibold text-lg">
+        Начать генерировать
+      </button>
+    {% endif %}
+  </section>
+
+  <!-- Modal 1: Пробная версия -->
+  <div id="modal-trial"
+      class="fixed inset-0 hidden z-50 flex items-center justify-center bg-black bg-opacity-50">
+    <div class="bg-white rounded-xl p-6 w-96 shadow-xl">
+      <h3 class="text-lg font-bold mb-4 text-gray-800">Пробная Версия</h3>
+      <p class="text-sm text-gray-600 mb-6">
+        Это пробная одноразовая версия. Пожалуйста, авторизуйтесь для полного доступа.
+      </p>
+      <div class="flex justify-end gap-3">
+        <button id="close-modal-trial"
+                class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
+          Закрыть
+        </button>
+        <a href="/auth" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
+          Продолжить
+        </a>
+        <!-- <button id="continue-modal-trial"
+                class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+          Продолжить
+        </button> -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 2: Форма Guest Form -->
+  <div id="modal-form"
+      class="fixed inset-0 hidden z-50 flex items-center justify-center bg-black bg-opacity-50">
+    <div class="bg-white rounded-xl w-full max-w-md mx-4 relative">
+      <!-- Крестик (закрыть) -->
+      <button id="close-modal-form"
+              class="absolute top-3 right-3 text-gray-500 hover:text-gray-800 text-xl font-bold">&times;</button>
+
+      <div class="p-6">
+        <h3 class="text-xl font-semibold mb-4 text-gray-800">Создайте книгу сейчас</h3>
+        <form class="space-y-4">
+          <input type="text" placeholder="Название книги" class="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+          <!-- Выпадающий список Жанр -->
+          <select id="book-genre" class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option selected disabled>Выберите жанр</option>
+            <option value="fantasy">Фэнтези</option>
+            <option value="sci-fi">Научная фантастика</option>
+            <option value="romance">Романтика</option>
+            <option value="mystery">Детектив</option>
+            <option value="adventure">Приключения</option>
+            <option value="drama">Драма</option>
+            <option value="comedy">Комедия</option>
+            <option value="horror">Ужасы</option>
+          </select>
+          <textarea placeholder="Описание или идея книги..." rows="3" class="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-400"></textarea>
+          <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl transition duration-200 font-medium">
+            Сгенерировать
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Latest Books Section -->
+  <section class="py-16 px-4 bg-white/60 fade-in" id="latest-books-section">
+    <h2 class="text-3xl font-bold mb-8 text-center">📚 Последние опубликованные книги</h2>
+
+    <!-- Текст о необходимости авторизации -->
+    {% if not user_auth %}
+      <p class="text-center text-gray-500">Просматривать приведенные ниже книги могут только авторизированные пользователи</p>
+      <div class="text-center mb-8">
+        <a href="/auth" class="text-indigo-600 hover:text-indigo-800 font-medium underline transition">Авторизация!</a>
+      </div>
+    {% endif %}
+
+    {% if latest_books and latest_books|length > 0 %}
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
+        {% for book in latest_books %}
+          {% if user_auth %}
+            <a href="/book/{{ book.id }}" class="group block">
+              <div class="bg-gray-50 p-5 rounded-lg shadow-md hover:shadow-xl transition-all border border-gray-100 group-hover:border-indigo-200">
+                <h3 class="font-bold text-lg text-indigo-700 group-hover:text-indigo-900 transition">{{ book.title }}</h3>
+                <p class="text-sm text-gray-600">✍️ Жанр: {{ book.genre or 'Не указан' }}</p>
+                <p class="text-sm text-gray-600">👤 Автор: {{ book.author_name }}</p>
+                <p class="text-xs text-gray-400 mt-2">📅 {{ book.created_at.strftime("%d.%m.%Y") }}</p>
+              </div>
+            </a>
+          {% else %}
+            <div class="opacity-60 cursor-not-allowed">
+              <div class="bg-gray-50 p-5 rounded-lg shadow-md border border-gray-100">
+                <h3 class="font-bold text-lg text-gray-500">{{ book.title }}</h3>
+                <p class="text-sm text-gray-500">✍️ Жанр: {{ book.genre or 'Не указан' }}</p>
+                <p class="text-sm text-gray-500">👤 Автор: {{ book.author_name }}</p>
+                <p class="text-xs text-gray-400 mt-2">📅 {{ book.created_at.strftime("%d.%m.%Y") }}</p>
+              </div>
+            </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="text-center max-w-2xl mx-auto">
+        <p class="text-gray-600 text-lg">Здесь пока нет книг. Создайте свою книгу!</p>
+        {% if user_auth %}
+          <a href="/library" class="mt-4 inline-block px-5 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-medium rounded-lg shadow hover:shadow-md transition">Создать книгу</a>
+        {% endif %}
+      </div>
+    {% endif %}
+  </section>
+
+  <!-- How It Works -->
+  <section class="py-16 px-4 fade-in" id="how-section">
+    <h2 class="text-3xl font-bold mb-10 text-center">Как это работает?</h2>
+    <div class="flex flex-col md:flex-row justify-center items-center gap-8">
+      <div class="text-center max-w-xs">
+        <div class="text-4xl mb-3 text-indigo-600"><i class="fas fa-lightbulb"></i></div>
+        <h3 class="font-semibold text-lg">1. Введи идею</h3>
+        <p class="text-gray-600">Расскажи, о чём ты думаешь</p>
+      </div>
+      <div class="text-center max-w-xs">
+        <div class="text-4xl mb-3 text-indigo-600"><i class="fas fa-palette"></i></div>
+        <h3 class="font-semibold text-lg">2. Выбери жанр</h3>
+        <p class="text-gray-600">Фэнтези, триллер или роман — решать тебе</p>
+      </div>
+      <div class="text-center max-w-xs">
+        <div class="text-4xl mb-3 text-indigo-600"><i class="fas fa-book-reader"></i></div>
+        <h3 class="font-semibold text-lg">3. Получи книгу</h3>
+        <p class="text-gray-600">Получи готовое произведение за 1 клик</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- For Whom -->
+  <section class="py-10 px-4 fade-in" id="for-section">
+    <h2 class="text-3xl font-bold mb-6 text-center">Для кого?</h2>
+    <ul class="list-disc list-inside max-w-xl mx-auto text-gray-700 space-y-2 text-center">
+      <li>Писатели, которые хотят начать писать быстрее</li>
+      <li>Геймдизайнеры для создания сеттинга</li>
+      <li>Студенты и школьники для проектов</li>
+      <li>Контентмейкеры и сценаристы</li>
+    </ul>
+  </section>
+
+  <!-- Testimonials -->
+  <section class="py-10 px-4 fade-in" id="testimonials-section">
+    <h2 class="text-3xl font-bold mb-10 text-center">Что говорят пользователи</h2>
+    <div id="testimonials-container" class="max-w-4xl mx-auto">
+      <!-- Сообщение по умолчанию -->
+      <p id="no-feedback-message" class="italic text-center text-gray-500">Загрузка...</p>
+    </div>
+  </section>
+
+  <section class="py-12 text-center">
+    <p class="text-gray-600 text-lg">🤖 <strong>StoryCraftAI</strong> — твой ИИ-соавтор. Будущее литературы уже здесь.</p>
+  </section>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+  const generateBtn = document.getElementById('generate-button');
+  const modalTrial = document.getElementById('modal-trial');
+  const modalForm = document.getElementById('modal-form');
+
+  const continueTrialBtn = document.getElementById('continue-modal-trial');
+  const closeTrialBtn = document.getElementById('close-modal-trial');
+  const closeModalFormBtn = document.getElementById('close-modal-form');
+
+  if (generateBtn && modalTrial) {
+    generateBtn.addEventListener('click', () => {
+      modalTrial.classList.remove('hidden');
+    });
+  }
+
+  if (continueTrialBtn && modalTrial && modalForm) {
+    continueTrialBtn.addEventListener('click', () => {
+      modalTrial.classList.add('hidden');
+      modalForm.classList.remove('hidden');
+    });
+  }
+
+  if (closeTrialBtn && modalTrial) {
+    closeTrialBtn.addEventListener('click', () => {
+      modalTrial.classList.add('hidden');
+    });
+  }
+
+  if (closeModalFormBtn && modalForm) {
+    closeModalFormBtn.addEventListener('click', () => {
+      modalForm.classList.add('hidden');
+    });
+  }
+
+  async function loadTestimonials() {
+    try {
+      const res = await fetch("/api/public-feedbacks");
+      const data = await res.json();
+
+      const container = document.getElementById("testimonials-container");
+      const messageEl = document.getElementById("no-feedback-message");
+
+      container.innerHTML = "";
+
+      if (!data.feedbacks || data.feedbacks.length === 0) {
+        messageEl.textContent = "Здесь пока нет отзывов. Напишите отзыв о нашем сервисе!";
+        container.appendChild(messageEl);
+        return;
+      }
+
+      data.feedbacks.forEach(feedback => {
+        const displayDate = feedback.updated_at || feedback.created_at;
+        const dateStr = new Date(displayDate).toLocaleString('ru', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        });
+
+        const card = document.createElement("blockquote");
+        card.className = "bg-white rounded-lg shadow-sm p-6 italic max-w-xl mx-auto mb-6 relative";
+
+        card.innerHTML = `
+          <span class="font-medium text-indigo-600">${feedback.user ?? 'Аноним'}</span>
+          <p class="mt-2 text-gray-800">&laquo;${feedback.text}&raquo;</p>
+          <time class="absolute bottom-3 right-6 text-xs text-gray-400">${dateStr}</time>
+        `;
+
+        container.appendChild(card);
+      });
+
+    } catch (err) {
+      console.error("Ошибка при загрузке отзывов:", err);
+    }
+  }
+
+  loadTestimonials();
+});
+</script>
+{% endblock %}

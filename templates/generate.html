@@ -1,0 +1,336 @@
+{% extends "base.html" %}
+{% block title %}Создание книги - StoryCraftAI{% endblock %}
+
+{% block content %}
+  <main class="flex-grow py-10 px-4">
+    <div class="max-w-3xl mx-auto">
+      <!-- Back Button -->
+      <a href="/library" class="inline-flex items-center text-indigo-600 hover:text-indigo-800 mb-6 transition font-medium">
+        <i class="fas fa-arrow-left mr-2"></i> Назад в библиотеку
+      </a>
+      <h1 class="text-3xl font-bold mb-6 text-indigo-700">Создай свою книгу</h1>
+
+      <!-- Форма генерации -->
+      <form id="generate-form" class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Название книги</label>
+            <input type="text" id="book-title" required placeholder="Введите название" class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Имя автора</label>
+            <input type="text" id="book-author" value="{{ username }}" readonly class="w-full border border-gray-200 bg-gray-100 rounded-md px-4 py-2" />
+          </div>
+        </div>
+        <div class="mb-6">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Жанр</label>
+          <select id="book-genre" class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option selected disabled>Выберите жанр</option>
+            <option value="fantasy">Фэнтези</option>
+            <option value="sci-fi">Научная фантастика</option>
+            <option value="romance">Романтика</option>
+            <option value="mystery">Детектив</option>
+            <option value="adventure">Приключения</option>
+            <option value="drama">Драма</option>
+            <option value="comedy">Комедия</option>
+            <option value="horror">Ужасы</option>
+          </select>
+        </div>
+        <!-- Язык книги -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Язык книги</label>
+          <select id="book-language" class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="Русский" selected>Русский</option>
+            <option value="Английский">Английский</option>
+            <option value="Французский">Французский</option>
+            <option value="Испанский">Испанский</option>
+          </select>
+        </div>
+
+        <!-- Тон повествования -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Тон повествования</label>
+          <select id="book-tone" class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="Нейтральный" selected>Нейтральный</option>
+            <option value="Юмористический">Юмористический</option>
+            <option value="Мрачный">Мрачный</option>
+            <option value="Приключенческий">Приключенческий</option>
+            <option value="Романтичный">Романтичный</option>
+            <option value="Драматичный">Драматичный</option>
+            <option value="Сатирический">Сатирический</option>
+          </select>
+        </div>
+
+        <!-- Точка зрения -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Точка зрения</label>
+          <select id="book-point-of-view" class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="Первое лицо" selected>Первое лицо</option>
+            <option value="Второе лицо">Второе лицо</option>
+            <option value="Третье лицо от имени героя">Третье лицо от имени героя</option>
+            <option value="Третье лицо от лица наблюдателя">Третье лицо от лица наблюдателя</option>
+            <option value="Омнипотентное повествование">Омнипотентное повествование</option>
+          </select>
+        </div>
+        
+        <div class="mb-6">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Описание / Промт</label>
+          <textarea id="book-prompt" rows="5" placeholder="Опишите идею вашей книги..." class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+        </div>
+        <div class="mb-6">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Длина текста</label>
+          <select id="book-length" class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="short">Короткая (1–2 тыс. слов)</option>
+            <option value="medium">Средняя (5–10 тыс. слов)</option>
+            <option value="long">Длинная (20+ тыс. слов)</option>
+          </select>
+        </div>
+        <button type="submit" id="generate-btn" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white py-3 rounded-md shadow transition duration-200 flex items-center justify-center space-x-2">
+          <i class="fas fa-magic"></i>
+          <span>Сгенерировать</span>
+          <div id="spinner" class="hidden">
+            <i class="fas fa-spinner fa-spin"></i>
+          </div>
+        </button>
+      </form>
+    </div>
+  </main>
+
+  <!-- Pop-up окно -->
+  <div id="popup" class="fixed inset-0 bg-black/30 backdrop-blur-sm hidden z-50 flex items-center justify-center">
+    <div class="bg-white rounded-lg shadow-lg max-w-xl w-full p-6 relative">
+      <button onclick="closePopup()" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700 text-xl">×</button>
+      
+      <!-- Состояние загрузки -->
+      <div id="loading-state" class="text-center py-10">
+        <i class="fas fa-spinner fa-spin text-indigo-600 text-5xl mb-4"></i>
+        <p class="text-lg text-gray-700">Пожалуйста подождите...</p>
+      </div>
+
+      <!-- Предпросмотр книги -->
+      <div id="preview-state" class="hidden">
+        <h2 id="preview-title" class="text-2xl font-bold text-gray-800 mb-4"></h2>
+        <p id="preview-genre" class="text-sm text-gray-600 mb-4"></p>
+        <pre id="preview-content" class="whitespace-pre-wrap text-gray-800 mb-6 max-h-96 overflow-y-auto"></pre>
+        <div class="flex justify-end space-x-4">
+          <button onclick="saveBook()" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition">Сохранить</button>
+          <button onclick="cancelPreview()" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition">Отменить</button>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+{% block extra_scripts %}
+  <!-- JS для формы генерации -->
+  <script>
+    const form = document.getElementById("generate-form");
+    const popup = document.getElementById("popup");
+    const loadingState = document.getElementById("loading-state");
+    const previewState = document.getElementById("preview-state");
+    const spinner = document.getElementById("spinner");
+
+    const previewTitle = document.getElementById("preview-title");
+    const previewGenre = document.getElementById("preview-genre");
+    const previewContent = document.getElementById("preview-content");
+
+    let abortController = null;
+    let isGenerating = false;
+
+    // Открытие pop-up
+    function openPopup() {
+      popup.classList.remove("hidden");
+    }
+
+    // Закрытие pop-up с подтверждением
+    function closePopupWithConfirm() {
+      if (isGenerating && !confirm("Вы уверены, что хотите отменить генерацию?")) {
+        return false;
+      }
+      return true;
+    }
+
+    // Функция "Отменить"
+    function cancelPreview() {
+      if (!closePopupWithConfirm()) return;
+
+      if (abortController) {
+        abortController.abort();
+        abortController = null;
+      }
+
+      // Скрываем pop-up
+      popup.classList.add("hidden");
+      loadingState.classList.remove("hidden");
+      previewState.classList.add("hidden");
+
+      // Сбрасываем форму
+      document.getElementById("book-title").value = "";
+      document.getElementById("book-genre").selectedIndex = 0;
+      document.getElementById("book-prompt").value = "";
+      document.getElementById("book-length").selectedIndex = 0;
+
+      isGenerating = false;
+      spinner.classList.add("hidden");
+    }
+
+    // Блокировка выхода при генерации
+    window.addEventListener("beforeunload", function (e) {
+      if (isGenerating) {
+        e.preventDefault();
+        e.returnValue = "Идёт генерация книги. Вы уверены, что хотите уйти?";
+      }
+    });
+
+    // Обработчик отправки формы
+    form.addEventListener("submit", async function (e) {
+      e.preventDefault();
+
+      if (isGenerating) {
+        alert("Пожалуйста, дождитесь завершения текущей генерации.");
+        return;
+      }
+
+      // Проверка cooldown
+      let cooldownCheck;
+      try {
+        const res = await fetch("/api/check-cooldown");
+        cooldownCheck = await res.json();
+      } catch (err) {
+        alert("Ошибка проверки cooldown. Попробуйте позже.");
+        return;
+      }
+
+      if (cooldownCheck.cooldown) {
+        alert(`Подождите ${Math.ceil(cooldownCheck.time_left)} секунд перед следующей генерацией`);
+        return;
+      }
+
+      // Получаем данные из формы
+      const title = document.getElementById("book-title").value.trim();
+      const genre = document.getElementById("book-genre").value;
+      const prompt = document.getElementById("book-prompt").value.trim();
+      const length = document.getElementById("book-length").value;
+      const language = document.getElementById("book-language").value;
+      const tone = document.getElementById("book-tone").value;
+      const pointOfView = document.getElementById("book-point-of-view").value;
+
+      if (!title || !genre || !prompt || genre === 'Выберите жанр') {
+        alert("Заполните все поля!");
+        return;
+      }
+
+      isGenerating = true;
+      spinner.classList.remove("hidden");
+      openPopup();
+      abortController = new AbortController();
+      const signal = abortController.signal;
+
+      try {
+        const response = await fetch('/api/generate-book', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            title, 
+            genre, 
+            prompt, 
+            length,
+            language,
+            tone,
+            point_of_view: pointOfView
+          }),
+          signal
+        });
+
+        if (!response.ok) {
+          throw new Error('Ошибка генерации');
+        }
+
+        const data = await response.json();
+        previewTitle.textContent = data.title;
+        previewGenre.textContent = "Жанр: " + data.genre;
+        previewContent.textContent = data.content;
+
+        loadingState.classList.add("hidden");
+        previewState.classList.remove("hidden");
+
+      } catch (err) {
+        if (err.name === "AbortError") {
+          console.log("Генерация отменена пользователем");
+        } else {
+          alert("Ошибка: " + err.message);
+          console.error(err);
+        }
+      } finally {
+        isGenerating = false;
+        spinner.classList.add("hidden");
+      }
+    });
+
+    // Сохранение книги
+    async function saveBook() {
+      const title = previewTitle.textContent;
+      const genre = previewGenre.textContent.replace("Жанр: ", "");
+      const content = previewContent.textContent;
+
+      // Получаем параметры из превью или хранилища
+      const language = document.getElementById("book-language").value;
+      const tone = document.getElementById("book-tone").value;
+      const pointOfView = document.getElementById("book-point-of-view").value;
+
+      const res = await fetch('/api/save_book', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          title, 
+          genre, 
+          content,
+          language,
+          tone,
+          point_of_view: pointOfView
+        })
+      });
+
+      if (res.ok) {
+        window.location.href = "/library";
+      } else {
+        alert("Ошибка сохранения");
+      }
+    }
+  </script>
+
+  
+  <script>
+  // Ограничения на количество символов
+  const titleLimit = 200;
+  const promptLimit = 400;
+
+  // Элементы формы
+  const titleInput = document.getElementById('book-title');
+  const promptTextarea = document.getElementById('book-prompt');
+
+  // Элементы для отображения счетчика
+  const titleCounter = document.createElement('div');
+  titleCounter.className = 'text-xs text-gray-500 mt-1';
+  titleInput.parentNode.appendChild(titleCounter);
+
+  const promptCounter = document.createElement('div');
+  promptCounter.className = 'text-xs text-gray-500 mt-1';
+  promptTextarea.parentNode.appendChild(promptCounter);
+
+  // Функция обновления счётчиков
+  function updateCounters() {
+    const titleLength = titleInput.value.length;
+    const promptLength = promptTextarea.value.length;
+
+    titleCounter.textContent = `Символов: ${titleLength} / ${titleLimit}`;
+    promptCounter.textContent = `Символов: ${promptLength} / ${promptLimit}`;
+  }
+
+  // Слушатели событий
+  titleInput.addEventListener('input', updateCounters);
+  promptTextarea.addEventListener('input', updateCounters);
+
+  // Инициализация при загрузке
+  window.addEventListener('DOMContentLoaded', updateCounters);
+</script>
+{% endblock %}

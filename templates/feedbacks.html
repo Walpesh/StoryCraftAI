@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+{% block title %}Отзывы пользователей - StoryCraftAI{% endblock %}
+{% block content %}
+
+<div class="container mx-auto py-12 px-4 max-w-4xl">
+  <!-- Logo Title Section -->
+  <section class="py-12 text-center fade-in" id="logo-section">
+    <a href="/" class="inline-block cursor-pointer">
+      <h1 class="text-5xl md:text-7xl font-black tracking-widest uppercase bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-transparent bg-clip-text animate-gradient-x">
+        STORYCRAFTAI
+      </h1>
+    </a>
+    <p class="mt-4 text-lg text-gray-600 max-w-xl mx-auto">
+      Отзывы тех, кто выбрал STORYCRAFTAI.
+    </p>
+    <p class="text-lg text-gray-600 max-w-xl mx-auto">
+      Ваш опыт — наша мотивация!
+    </p>
+  </section>
+
+  <!-- Форма отправки отзыва -->
+  {% if user_auth %}
+    <section class="mb-12 max-w-2xl mx-auto mt-16">
+      <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100 transform transition duration-300 hover:shadow-xl">
+        <h2 class="text-xl font-semibold mb-4 text-gray-800">Оставить отзыв</h2>
+        <form id="feedback-form" class="space-y-4">
+          <div class="relative">
+            <textarea id="feedback-text" rows="4" maxlength="500"
+                      placeholder="Напишите ваш отзыв здесь..." 
+                      class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"></textarea>
+            <p id="feedback-char-count" class="absolute bottom-2 right-4 text-xs text-gray-400">0 / 500</p>
+          </div>
+          <button type="submit" 
+                  class="px-6 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-medium rounded-lg transition duration-300 shadow-md hover:shadow-lg">
+            Отправить
+          </button>
+        </form>
+      </div>
+    </section>
+  {% endif %}
+
+  <!-- Список отзывов -->
+  <section class="fade-in mt-12">
+    <h2 class="text-xl font-semibold mb-4">📖 Все отзывы</h2>
+    <div id="feedback-list" class="space-y-6"></div>
+    <div id="no-feedbacks" class="hidden text-center text-gray-500 my-8">
+      Нет отзывов. Будьте первым!
+    </div>
+    <button id="load-more" 
+      class="mt-6 inline-flex items-center px-5 py-2 border border-gray-300 text-sm font-medium rounded-full text-gray-700 bg-white hover:bg-gray-50 transition duration-200 shadow-sm hover:shadow">
+      Посмотреть ещё
+    </button>
+  </section>
+</div>
+
+<!-- Pop-up для редактирования отзыва -->
+<div id="edit-modal" class="fixed inset-0 z-50 hidden overflow-y-auto bg-black bg-opacity-30 backdrop-blur-sm">
+  <div class="flex items-center justify-center min-h-screen px-4">
+    <div class="relative bg-white rounded-lg shadow-lg w-full max-w-md p-6 border border-gray-200">
+      <h3 class="text-xl font-semibold mb-4">Редактировать отзыв</h3>
+      <textarea id="edit-textarea" rows="5"
+                maxlength="500"
+                class="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-2"></textarea>
+      <input type="hidden" id="edit-feedback-id" />
+      <p id="char-count" class="text-xs text-gray-500 text-right mb-4">0 / 500</p>
+
+      <div class="flex justify-end space-x-2">
+        <button onclick="closeEditModal()" type="button"
+                class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded transition">Отмена</button>
+        <button onclick="saveEditedFeedback()" type="button"
+                class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded transition">Сохранить</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const userEmail = "{{ user_email | default('') }}";
+const userType = "{{ user_type }}";
+
+let currentEditId = null;
+let offset = 0;
+const limit = 10;
+let hasMore = true;
+
+function loadFeedbacks(init = false) {
+  fetch(`/api/feedbacks?offset=${offset}&limit=${limit}`)
+    .then(res => res.json())
+    .then(data => {
+      const list = document.getElementById("feedback-list");
+
+      if (init) {
+        list.innerHTML = "";
+        offset = 0;
+        hasMore = true;
+        document.getElementById("load-more").style.display = "none";
+      }
+
+      if (init && data.my_feedback) {
+        const f = data.my_feedback;
+        list.innerHTML += renderFeedback(f);
+      }
+
+      data.feedbacks.forEach(f => {
+        list.innerHTML += renderFeedback(f);
+      });
+
+      offset += limit;
+      hasMore = data.has_more;
+
+      document.getElementById("load-more").style.display = hasMore ? "inline-block" : "none";
+    });
+}
+
+function renderFeedback(f) {
+  const displayDate = f.updated_at ? new Date(f.updated_at) : new Date(f.created_at);
+  const formattedDate = displayDate.toLocaleDateString("ru-RU", {
+    year: "numeric",
+    month: "long",
+    day: "numeric"
+  });
+
+  return `
+    <div class="p-6 bg-white rounded-lg shadow-md relative transition hover:shadow-lg">
+      <div class="text-sm text-gray-600 mb-2">@${f.user}</div>
+      <p class="text-gray-800 leading-relaxed">${f.text}</p>
+      <div class="text-xs text-gray-500 mt-3">Дата: ${formattedDate}</div>
+
+      ${f.is_me || userType === "admin" ? `
+        <div class="absolute right-4 top-4 flex flex-col space-y-2">
+          <button onclick="openEditModal(${f.id}, \`${escapeBackticks(f.text)}\`)" 
+                  class="w-8 h-8 flex items-center justify-center rounded-full text-blue-600 hover:bg-blue-100 transition"
+                  title="Редактировать">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-6-4l4 4m0 0l4-4m-4 4V3" />
+            </svg>
+          </button>
+          <button onclick="confirmDeleteFeedback(${f.id})" 
+                  class="w-8 h-8 flex items-center justify-center rounded-full text-red-600 hover:bg-red-100 transition"
+                  title="Удалить">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+        </div>
+      ` : ""}
+    </div>`;
+}
+
+function confirmDeleteFeedback(id) {
+  const isConfirmed = confirm("Вы уверены, что хотите удалить этот отзыв?");
+  if (isConfirmed) {
+    deleteFeedback(id);
+  }
+}
+
+function deleteFeedback(id) {
+  fetch(`/api/feedbacks/${id}`, { method: "DELETE" })
+    .then(() => loadFeedbacks(true));
+}
+
+function loadMore() {
+  if (hasMore) loadFeedbacks(false);
+}
+
+document.getElementById("feedback-form")?.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const textarea = document.getElementById("feedback-text");
+  const text = textarea.value.trim();
+
+  if (!text) {
+    alert("Ошибка: отзыв не может быть пустым.");
+    return;
+  }
+
+  fetch("/api/feedbacks", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text })
+  }).then(res => {
+    if (res.ok) {
+      textarea.value = "";
+      alert("Спасибо за ваш отзыв!");
+      loadFeedbacks(true);
+    } else {
+      alert("Ошибка при отправке отзыва.");
+    }
+  });
+});
+
+function openEditModal(id, text) {
+  currentEditId = id;
+  const textarea = document.getElementById("edit-textarea");
+  textarea.value = text;
+  updateCharCount(text.length);
+  document.getElementById("edit-modal").classList.remove("hidden");
+}
+
+function closeEditModal() {
+  currentEditId = null;
+  document.getElementById("edit-modal").classList.add("hidden");
+}
+
+function saveEditedFeedback() {
+  if (!currentEditId) {
+    alert("Ошибка: не выбран отзыв для редактирования");
+    return;
+  }
+  const newText = document.getElementById("edit-textarea").value.trim();
+  if (!newText) {
+    alert("Ошибка: текст отзыва не может быть пустым.");
+    return;
+  }
+
+  fetch(`/api/feedbacks/${currentEditId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text: newText })
+  }).then(res => {
+    if (res.ok) {
+      closeEditModal();
+      alert("Отзыв успешно изменён!");
+      loadFeedbacks(true);
+    } else {
+      alert("Ошибка при сохранении отзыва.");
+    }
+  });
+}
+
+function escapeBackticks(str) {
+  return str.replace(/`/g, '\\`').replace(/\$/g, '\\$');
+}
+
+// Инициализация счётчика при загрузке страницы
+document.addEventListener("DOMContentLoaded", () => {
+  const textarea = document.getElementById("feedback-text");
+  const counter = document.getElementById("feedback-char-count");
+
+  if (textarea && counter) {
+    // Обновляем счётчик при вводе текста
+    textarea.addEventListener("input", () => {
+      const remaining = 500 - textarea.value.length;
+      counter.textContent = `${textarea.value.length} / 500`;
+    });
+  }
+
+  const editTextarea = document.getElementById("edit-textarea");
+  if (editTextarea) {
+    editTextarea.addEventListener("input", () => {
+      const count = editTextarea.value.length;
+      updateCharCount(count);
+    });
+  }
+});
+
+function updateCharCount(count) {
+  const charCountEl = document.getElementById("char-count");
+  if (charCountEl) {
+    charCountEl.textContent = `${count} / 500`;
+  }
+}
+
+loadFeedbacks(true);
+</script>
+{% endblock %}
